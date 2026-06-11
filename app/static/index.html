@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>居民社区养老服务需求分析与智能匹配系统</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app" class="shell">
+    <section class="panel">
+      <header class="header">
+        <div>
+          <h1>居民社区养老服务需求分析与智能匹配系统</h1>
+          <p>Vue + Axios + ECharts 接口调试页</p>
+        </div>
+        <button class="light" @click="logout">登出</button>
+      </header>
+
+      <form class="login-form" @submit.prevent="login">
+        <label>
+          用户名
+          <input v-model="loginForm.username" autocomplete="username">
+        </label>
+        <label>
+          密码
+          <input v-model="loginForm.password" type="password" autocomplete="current-password">
+        </label>
+        <button type="submit">登录并读取角色数据</button>
+      </form>
+
+      <div class="quick">
+        <button v-for="item in quickUsers" :key="item.username" class="light" @click="useAccount(item.username)">
+          {{ item.label }}
+        </button>
+      </div>
+
+      <section class="user-card" v-if="currentUser">
+        <strong>{{ currentUser.display_name }}</strong>
+        <span>{{ roleName[currentUser.role] }} / 绑定ID：{{ currentUser.subject_id }}</span>
+      </section>
+
+      <div id="chart" class="chart"></div>
+      <pre>{{ output }}</pre>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script src="/main.js"></script>
+</body>
+</html>

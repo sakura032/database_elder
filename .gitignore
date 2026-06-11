@@ -1,0 +1,46 @@
+# Python 虚拟环境
+.venv/
+venv/
+env/
+
+# Python 缓存和构建产物
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+build/
+dist/
+*.egg-info/
+
+# 本地环境配置和敏感信息
+.env
+.env.*
+!.env.example
+
+# 测试、覆盖率和工具缓存
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Flask 本地文件
+instance/
+*.sqlite
+*.db
+
+# 前端依赖和构建产物
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+app/static/dist/
+
+# 编辑器和系统文件
+.idea/
+.vscode/
+*.swp
+*.swo
+Thumbs.db
+.DS_Store
