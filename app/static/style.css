@@ -1086,7 +1086,7 @@ h2 {
 .record-form .staff-picker {
   grid-area: staff;
   align-self: stretch;
-  height: 158px;
+  height: 94px;
 }
 
 .record-form .record-type {
@@ -1389,6 +1389,10 @@ tr:last-child td {
 
   .record-form {
     grid-template-areas: none;
+  }
+
+  .record-form > * {
+    grid-area: auto;
   }
 
   .record-form .staff-picker {
