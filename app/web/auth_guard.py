@@ -21,3 +21,18 @@ def role_required(role):
         return wrapped
 
     return decorator
+
+
+def roles_required(*roles):
+    """允许多个角色访问同一个接口。"""
+    def decorator(view_func):
+        @wraps(view_func)
+        @login_required
+        def wrapped(*args, **kwargs):
+            if current_user.role not in roles:
+                return fail("无权限访问该角色接口", 403)
+            return view_func(*args, **kwargs)
+
+        return wrapped
+
+    return decorator

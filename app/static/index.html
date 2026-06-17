@@ -7,32 +7,162 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <div id="app" class="shell">
-    <section class="panel">
+  <div id="app" class="app-shell">
+    <div v-if="notice.text" :class="['toast', notice.type]">{{ notice.text }}</div>
+    <div v-if="dialog.visible" class="dialog-mask" @click.self="closeDialog">
+      <section class="dialog-box" role="alertdialog" aria-modal="true">
+        <h2>{{ dialog.title }}</h2>
+        <p>{{ dialog.message }}</p>
+        <button type="button" @click="closeDialog">关闭</button>
+      </section>
+    </div>
+    <section v-if="currentUser" class="ai-float">
+      <button type="button" class="ai-float-toggle" @click="toggleAiChat">
+        {{ aiChat.open ? '收起AI助手' : 'AI助手' }}
+      </button>
+      <div v-if="aiChat.open" class="ai-float-panel">
+        <div class="ai-chat-header">
+          <div>
+            <strong>AI 智能助手</strong>
+          </div>
+          <button type="button" class="light tiny" @click="clearAiChat">清空对话</button>
+        </div>
+        <div class="ai-float-body">
+          <div class="ai-chat-messages">
+            <div
+              v-for="(item, index) in aiChat.messages"
+              :key="index"
+              :class="['ai-message', item.role]"
+            >
+              {{ item.text }}
+            </div>
+            <div v-if="aiChat.loading" class="ai-message assistant ai-loading">处理中...</div>
+            <div v-if="pendingAiAction" class="ai-pending-action">
+              <div>
+                <strong>{{ pendingAiAction.title }}</strong>
+                <span>{{ pendingAiAction.description }}</span>
+                <small v-if="pendingAiAction.expires_at">有效期至 {{ pendingAiAction.expires_at }}</small>
+              </div>
+              <div class="ai-pending-actions">
+                <button type="button" class="tiny" :disabled="aiChat.loading" @click="confirmAiAction()">确认执行</button>
+                <button type="button" class="light tiny" :disabled="aiChat.loading" @click="cancelAiAction()">取消</button>
+              </div>
+            </div>
+          </div>
+          <div class="ai-float-side">
+            <section v-if="currentUser.role === 'community_admin'" class="ai-side-block">
+              <h3>快捷指令</h3>
+              <button type="button" class="light" @click="fillAiCommand('查看待分派需求')">查待分派需求</button>
+              <button type="button" class="light" @click="fillAiCommand(adminAssign.demand_id ? adminAssign.demand_id + ' 的承接机构' : '推荐承接机构')">推荐机构</button>
+              <button type="button" class="light" @click="fillAiCommand('生成统计报告')">生成报告</button>
+            </section>
+            <section v-else-if="currentUser.role === 'org'" class="ai-side-block">
+              <h3>快捷指令</h3>
+              <button type="button" class="light" @click="fillAiCommand('推荐当前服务记录的服务人员')">推荐人员</button>
+              <button type="button" class="light" @click="fillAiCommand('整理服务记录草稿')">整理记录</button>
+              <button type="button" class="light" @click="fillAiCommand('空闲服务人员有哪些')">查空闲人员</button>
+            </section>
+            <section v-else class="ai-side-block">
+              <h3>快捷指令</h3>
+              <button type="button" class="light" @click="fillAiCommand('我明天想去医院复查')">识别需求</button>
+              <button type="button" class="light" @click="fillAiCommand('有哪些服务记录')">查看记录</button>
+              <button type="button" class="light" @click="fillAiCommand('评价服务')">评价服务</button>
+            </section>
+          </div>
+        </div>
+        <form class="ai-chat-form ai-float-form" @submit.prevent="sendAiChat">
+          <textarea
+            ref="aiInput"
+            v-model="aiChat.input"
+            :placeholder="aiPlaceholder"
+            rows="3"
+            @keydown.enter.exact.prevent="sendAiChat"
+          ></textarea>
+          <button type="submit" :disabled="aiChat.loading">发送</button>
+        </form>
+      </div>
+    </section>
+    <section class="top-panel">
       <header class="header">
         <div>
           <h1>居民社区养老服务需求分析与智能匹配系统</h1>
-          <p>Vue + Axios + ECharts 接口调试页</p>
+          <p>社区监管、机构执行、老人评价的一体化服务流程</p>
         </div>
-        <button class="light" @click="logout">登出</button>
+        <button v-if="currentUser" class="light" @click="logout">登出</button>
       </header>
 
-      <form class="login-form" @submit.prevent="login">
-        <label>
-          用户名
-          <input v-model="loginForm.username" autocomplete="username">
-        </label>
-        <label>
-          密码
-          <input v-model="loginForm.password" type="password" autocomplete="current-password">
-        </label>
-        <button type="submit">登录并读取角色数据</button>
-      </form>
+      <div v-if="!currentUser" class="auth-layout">
+        <section class="auth-visual" aria-hidden="true">
+          <div class="care-scene">
+            <div class="elder-figure">
+              <span class="head"></span>
+              <span class="hair"></span>
+              <span class="body"></span>
+              <span class="arm"></span>
+              <span class="leg leg-left"></span>
+              <span class="leg leg-right"></span>
+              <span class="cane"></span>
+            </div>
+            <div class="caregiver-figure">
+              <span class="head"></span>
+              <span class="hair"></span>
+              <span class="body"></span>
+              <span class="arm arm-left"></span>
+              <span class="arm arm-right"></span>
+              <span class="badge"></span>
+            </div>
+            <div class="care-chair"></div>
+            <div class="care-card care-card-main">
+              <strong>个性化服务</strong>
+            </div>
+            <div class="care-card care-card-sub">
+              <strong>暖心照护</strong>
+            </div>
+            <div class="care-heart"></div>
+          </div>
+        </section>
 
-      <div class="quick">
-        <button v-for="item in quickUsers" :key="item.username" class="light" @click="useAccount(item.username)">
-          {{ item.label }}
-        </button>
+        <section class="auth-card">
+          <div class="auth-tabs">
+            <button type="button" :class="{ active: authMode === 'login' }" @click="switchAuthMode('login')">账号登录</button>
+            <button type="button" :class="{ active: authMode === 'register' }" @click="switchAuthMode('register')">老人注册</button>
+          </div>
+
+          <form v-if="authMode === 'login'" class="auth-form" @submit.prevent="login">
+            <div class="role-switch">
+              <button
+                v-for="item in loginRoles"
+                :key="item.value"
+                type="button"
+                :class="{ active: loginForm.role === item.value }"
+                @click="loginForm.role = item.value"
+              >
+                {{ item.label }}
+              </button>
+            </div>
+            <label>
+              用户名
+              <input v-model="loginForm.username" autocomplete="username">
+            </label>
+            <label>
+              密码
+              <input v-model="loginForm.password" type="password" autocomplete="current-password">
+            </label>
+            <button type="submit">登录</button>
+          </form>
+
+          <form v-if="authMode === 'register'" class="auth-form" @submit.prevent="register">
+            <label>
+              用户名
+              <input v-model="registerForm.username" autocomplete="username">
+            </label>
+            <label>
+              密码
+              <input v-model="registerForm.password" type="password" autocomplete="new-password">
+            </label>
+            <button type="submit">注册老人账号</button>
+          </form>
+        </section>
       </div>
 
       <section class="user-card" v-if="currentUser">
@@ -40,9 +170,506 @@
         <span>{{ roleName[currentUser.role] }} / 绑定ID：{{ currentUser.subject_id }}</span>
       </section>
 
-      <div id="chart" class="chart"></div>
-      <pre>{{ output }}</pre>
+      <section v-if="currentUser" class="stat-strip">
+        <article v-for="item in roleStats" :key="item.label" class="stat-item">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+        </article>
+      </section>
+
     </section>
+
+    <main v-if="currentUser" class="workspace">
+      <section v-if="currentUser.role === 'community_admin'" class="role-grid">
+        <article class="panel">
+          <div class="section-head">
+            <h2>服务记录生成</h2>
+            <div class="section-actions">
+              <button type="button" class="light" @click="sendAiCommand(adminAssign.demand_id ? adminAssign.demand_id + ' 的承接机构' : '推荐承接机构')">AI 推荐机构</button>
+              <button type="submit" form="adminAssignForm">生成记录</button>
+            </div>
+          </div>
+          <form id="adminAssignForm" class="assign-form" @submit.prevent="assignDemand">
+            <label class="combo-field">
+              服务需求
+              <input v-model="adminSearch.demand" placeholder="搜索 ID / 老人 / 类型 / 状态">
+              <select v-model="adminAssign.demand_id">
+                <option value="">选择服务需求</option>
+                <option v-for="item in filteredAssignableDemands" :key="item.demand_id" :value="item.demand_id">
+                  {{ item.demand_id }} / {{ item.demand_status }} / {{ normalizedEmergencyLevel(item.emergency_level) }} / {{ item.elderly_name }} / {{ item.demand_type }}
+                </option>
+              </select>
+            </label>
+            <label class="combo-field">
+              服务机构
+              <input v-model="adminSearch.org" placeholder="搜索 ID / 机构 / 类型">
+              <select v-model="adminAssign.org_id">
+                <option value="">选择服务机构</option>
+                <option v-for="item in filteredOrgs" :key="item.org_id" :value="item.org_id">
+                  {{ item.org_id }} / {{ item.org_name }} / {{ item.org_type }}
+                </option>
+              </select>
+            </label>
+          </form>
+          <section v-if="aiRecommendation" class="ai-result">
+            <strong>AI 推荐：{{ aiRecommendation.recommended_org_name }}</strong>
+            <p>{{ aiRecommendation.reason }}</p>
+            <div class="ai-candidates">
+              <span
+                v-for="item in aiRecommendation.candidates"
+                :key="item.org_id"
+                class="tag tag-assigned"
+              >
+                {{ item.org_name }} / {{ item.score }}
+              </span>
+            </div>
+          </section>
+          <div class="table-scroll table-scroll-short">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>老人</th>
+                  <th>类型</th>
+                  <th>紧急程度</th>
+                  <th>记录数</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in pendingDemands" :key="item.demand_id">
+                  <td>{{ item.demand_id }}</td>
+                  <td>{{ item.elderly_name }}</td>
+                  <td>{{ item.demand_type }}</td>
+                  <td><span :class="['tag', emergencyClass(item.emergency_level)]">{{ normalizedEmergencyLevel(item.emergency_level) }}</span></td>
+                  <td>{{ item.record_count || 0 }} 条</td>
+                  <td><span :class="['tag', statusClass(item.demand_status)]">{{ item.demand_status }}</span></td>
+                  <td>
+                    <button
+                      class="tiny"
+                      :class="{ active: adminAssign.demand_id === item.demand_id }"
+                      @click="selectAdminDemand(item.demand_id)"
+                    >
+                      {{ adminAssign.demand_id === item.demand_id ? '已选择' : '选择' }}
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="!pendingDemands.length">
+                  <td colspan="7" class="empty-cell">暂无待分派服务</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="fold-list">
+            <details v-for="group in groupedAdminDemands" :key="group.status" class="fold-item">
+              <summary>
+                <span>{{ group.title }}</span>
+                <strong>{{ group.items.length }}</strong>
+              </summary>
+              <div class="table-scroll table-scroll-fold">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>老人</th>
+                      <th>类型</th>
+                      <th>紧急程度</th>
+                      <th>记录数</th>
+                      <th>状态</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="item in group.items" :key="item.demand_id">
+                      <td>{{ item.demand_id }}</td>
+                      <td>{{ item.elderly_name }}</td>
+                      <td>{{ item.demand_type }}</td>
+                      <td><span :class="['tag', emergencyClass(item.emergency_level)]">{{ normalizedEmergencyLevel(item.emergency_level) }}</span></td>
+                      <td>{{ item.record_count || 0 }} 条</td>
+                      <td><span :class="['tag', statusClass(item.demand_status)]">{{ item.demand_status }}</span></td>
+                      <td>
+                        <button
+                          class="tiny"
+                          :class="{ active: adminAssign.demand_id === item.demand_id }"
+                          @click="selectAdminDemand(item.demand_id)"
+                        >
+                          {{ adminAssign.demand_id === item.demand_id ? '已选择' : '追加记录' }}
+                        </button>
+                      </td>
+                    </tr>
+                    <tr v-if="!group.items.length">
+                      <td colspan="7" class="empty-cell">暂无数据</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <h2>服务过程监管</h2>
+            <button type="button" class="light" @click="sendAiCommand('生成统计报告')">AI 生成报告</button>
+          </div>
+          <section v-if="aiReport" class="ai-result">
+            <strong>{{ aiReport.title }}</strong>
+            <p>{{ aiReport.summary }}</p>
+            <div class="ai-list" v-if="aiReport.risks && aiReport.risks.length">
+              <span>风险提示</span>
+              <ul>
+                <li v-for="item in aiReport.risks" :key="item">{{ item }}</li>
+              </ul>
+            </div>
+            <div class="ai-list" v-if="aiReport.suggestions && aiReport.suggestions.length">
+              <span>优化建议</span>
+              <ul>
+                <li v-for="item in aiReport.suggestions" :key="item">{{ item }}</li>
+              </ul>
+            </div>
+          </section>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>机构</th>
+                  <th>老人</th>
+                  <th>紧急程度</th>
+                  <th>状态</th>
+                  <th>人员</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in adminData.records" :key="item.record_id">
+                  <td>{{ item.record_id }}</td>
+                  <td>{{ item.org_name }}</td>
+                  <td>{{ item.elderly_name }}</td>
+                  <td><span :class="['tag', emergencyClass(item.emergency_level)]">{{ normalizedEmergencyLevel(item.emergency_level) }}</span></td>
+                  <td><span :class="['tag', statusClass(item.record_status)]">{{ normalizedRecordStatus(item.record_status) }}</span></td>
+                  <td>{{ item.staff_names || '未安排' }}</td>
+                </tr>
+                <tr v-if="!adminData.records.length">
+                  <td colspan="6" class="empty-cell">暂无服务过程记录</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section v-if="currentUser.role === 'org'" class="role-grid">
+        <article class="panel">
+          <div class="section-head">
+            <h2>服务人员管理</h2>
+            <button type="submit" form="staffCreateForm">新增</button>
+          </div>
+          <form id="staffCreateForm" class="staff-form" @submit.prevent="createStaff">
+            <input v-model="staffForm.staff_name" placeholder="姓名">
+            <select v-model="staffForm.qualification">
+              <option value="" disabled hidden>资质</option>
+              <option>养老护理员</option>
+              <option>护士</option>
+              <option>康复治疗师</option>
+              <option>家政服务员</option>
+              <option>心理咨询师</option>
+              <option>社工</option>
+            </select>
+            <input v-model="staffForm.contact" placeholder="联系方式">
+            <select v-model="staffForm.available_status">
+              <option value="" disabled hidden>人员状态</option>
+              <option>空闲</option>
+              <option>忙碌</option>
+              <option>休假</option>
+            </select>
+          </form>
+          <div class="table-scroll table-scroll-short">
+            <table>
+              <thead>
+                <tr>
+                  <th>姓名</th>
+                  <th>资质</th>
+                  <th>联系方式</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in orgData.staff" :key="item.staff_id">
+                  <td>{{ item.staff_name }}</td>
+                  <td>{{ item.qualification }}</td>
+                  <td>{{ item.contact || '-' }}</td>
+                  <td><span :class="['tag', statusClass(item.available_status)]">{{ item.available_status }}</span></td>
+                </tr>
+                <tr v-if="!orgData.staff.length">
+                  <td colspan="4" class="empty-cell">暂无服务人员</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="subsection-head">
+            <h3>服务人员匹配</h3>
+            <button type="button" class="light tiny" @click="requestAiStaffRecommendation">AI 推荐</button>
+          </div>
+          <section v-if="aiStaffRecommendation" class="ai-result">
+            <strong>AI 推荐：{{ aiStaffRecommendation.recommended_staff_name }}</strong>
+            <p>{{ aiStaffRecommendation.reason }}</p>
+            <div class="ai-candidates">
+              <span
+                v-for="item in aiStaffRecommendation.candidates"
+                :key="item.staff_id"
+                class="tag tag-free"
+              >
+                {{ item.staff_name }} / {{ item.score }}
+              </span>
+            </div>
+          </section>
+          <form class="match-form" @submit.prevent="assignRecordStaff">
+            <select v-model="recordStaffForm.record_id" required @change="syncSelectedOrgRecord(recordStaffForm.record_id)">
+              <option value="" disabled hidden>请选择未完成服务</option>
+              <option v-for="item in unfinishedRecords" :key="item.record_id" :value="item.record_id">
+                {{ item.record_id }} / {{ normalizedEmergencyLevel(item.emergency_level) }} / {{ item.elderly_name }} / {{ item.demand_type }}
+              </option>
+            </select>
+            <div class="staff-picker" role="group" aria-label="选择空闲服务人员">
+              <button
+                v-for="item in availableStaff"
+                :key="item.staff_id"
+                type="button"
+                :class="['staff-option', { active: isStaffSelected('recordStaffForm', item.staff_id) }]"
+                @click="toggleStaffSelection('recordStaffForm', item.staff_id)"
+              >
+                <span>{{ item.staff_name }}</span>
+                <small>{{ item.qualification || '无资质备注' }}</small>
+              </button>
+              <p v-if="!availableStaff.length" class="picker-empty">暂无空闲人员</p>
+            </div>
+            <button type="submit">安排人员</button>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <h2>服务记录处理</h2>
+            <div class="section-actions">
+              <button type="button" class="light" @click="requestAiRecordDraft">AI 整理</button>
+              <button type="submit" form="recordCompleteForm">完成</button>
+            </div>
+          </div>
+          <form id="recordCompleteForm" class="record-form" @submit.prevent="completeRecord">
+            <select class="record-select" v-model="completeForm.record_id" required @change="syncSelectedOrgRecord(completeForm.record_id)">
+              <option value="" disabled hidden>请选择待完成服务</option>
+              <option v-for="item in unfinishedRecords" :key="item.record_id" :value="item.record_id">
+                {{ item.record_id }} / {{ normalizedEmergencyLevel(item.emergency_level) }} / {{ item.elderly_name }} / {{ item.staff_names || '未安排人员' }}
+              </option>
+            </select>
+            <div class="staff-picker" role="group" aria-label="选择参与服务人员">
+              <button
+                v-for="item in orgData.staff"
+                :key="item.staff_id"
+                type="button"
+                :class="['staff-option', { active: isStaffSelected('completeForm', item.staff_id) }]"
+                @click="toggleStaffSelection('completeForm', item.staff_id)"
+              >
+                <span>{{ item.staff_name }}</span>
+                <small>{{ item.qualification || '无资质备注' }}</small>
+              </button>
+              <p v-if="!orgData.staff.length" class="picker-empty">暂无服务人员</p>
+            </div>
+            <select class="record-type" v-model="completeForm.service_type" required>
+              <option value="" disabled hidden>请选择服务类型</option>
+              <option>助餐服务</option>
+              <option>助洁服务</option>
+              <option>陪诊服务</option>
+              <option>健康照护</option>
+              <option>精神慰藉</option>
+              <option>紧急上门</option>
+            </select>
+            <input class="record-time" v-model="completeForm.service_time" placeholder="2026-06-16 09:00:00">
+            <input class="record-duration" v-model.number="completeForm.service_duration" placeholder="时长">
+          </form>
+          <section v-if="aiRecordDraft" class="ai-result">
+            <strong>AI 服务记录草稿</strong>
+            <p>{{ aiRecordDraft.record_summary }}</p>
+          </section>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>记录</th>
+                  <th>需求</th>
+                  <th>老人</th>
+                  <th>紧急程度</th>
+                  <th>状态</th>
+                  <th>人员</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in orgData.records" :key="item.record_id">
+                  <td>{{ item.record_id }}</td>
+                  <td>{{ item.demand_type }}</td>
+                  <td>{{ item.elderly_name }}</td>
+                  <td><span :class="['tag', emergencyClass(item.emergency_level)]">{{ normalizedEmergencyLevel(item.emergency_level) }}</span></td>
+                  <td><span :class="['tag', statusClass(item.record_status)]">{{ normalizedRecordStatus(item.record_status) }}</span></td>
+                  <td>{{ item.staff_names || '未安排' }}</td>
+                  <td>
+                    <button class="tiny" :disabled="normalizedRecordStatus(item.record_status) !== '未完成'" @click="selectOrgRecord(item.record_id)">选择</button>
+                  </td>
+                </tr>
+                <tr v-if="!orgData.records.length">
+                  <td colspan="7" class="empty-cell">暂无服务记录</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section v-if="currentUser.role === 'elder'" class="role-grid">
+        <article class="panel full-panel">
+          <div class="section-head">
+            <h2>个人资料维护</h2>
+          </div>
+          <form class="profile-form" @submit.prevent="updateProfile">
+            <label>
+              老人编号
+              <input :value="currentUser.subject_id" disabled>
+            </label>
+            <label>
+              姓名
+              <input v-model="profileForm.elderly_name">
+            </label>
+            <label>
+              年龄
+              <input v-model.number="profileForm.age" type="number" min="0" max="130">
+            </label>
+            <label>
+              健康状态
+              <select v-model="profileForm.health_status">
+                <option value="" disabled>未填写</option>
+                <option>健康</option>
+                <option>慢性病</option>
+                <option>行动不便</option>
+                <option>术后康复</option>
+                <option>需长期照护</option>
+              </select>
+            </label>
+            <label>
+              居住地址
+              <input v-model="profileForm.live_address">
+            </label>
+            <label>
+              联系方式
+              <input v-model="profileForm.contact">
+            </label>
+            <label>
+              需求标签
+              <select v-model="profileForm.demand_tag">
+                <option value="" disabled hidden>常规需求</option>
+                <option>助餐</option>
+                <option>助洁</option>
+                <option>陪诊</option>
+                <option>健康照护</option>
+                <option>精神慰藉</option>
+                <option>紧急关怀</option>
+              </select>
+            </label>
+            <button type="submit">保存资料</button>
+          </form>
+        </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <h2>提交服务需求</h2>
+            <button type="button" class="light" @click="startDemandAi">AI 识别需求</button>
+          </div>
+          <form class="inline-form" @submit.prevent="createDemand">
+            <select v-model="demandForm.demand_type">
+              <option>助餐服务</option>
+              <option>助洁服务</option>
+              <option>陪诊服务</option>
+              <option>健康照护</option>
+              <option>精神慰藉</option>
+              <option>紧急上门</option>
+            </select>
+            <select v-model="demandForm.emergency_level">
+              <option>紧急</option>
+              <option>较急</option>
+              <option>普通</option>
+            </select>
+            <input v-model="demandForm.description" placeholder="需求描述">
+            <button type="submit">提交</button>
+          </form>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>类型</th>
+                  <th>紧急程度</th>
+                  <th>状态</th>
+                  <th>时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in elderData.demands" :key="item.demand_id">
+                  <td>{{ item.demand_id }}</td>
+                  <td>{{ item.demand_type }}</td>
+                  <td><span :class="['tag', emergencyClass(item.emergency_level)]">{{ normalizedEmergencyLevel(item.emergency_level) }}</span></td>
+                  <td><span :class="['tag', statusClass(item.demand_status)]">{{ item.demand_status }}</span></td>
+                  <td>{{ item.submit_time }}</td>
+                </tr>
+                <tr v-if="!elderData.demands.length">
+                  <td colspan="5" class="empty-cell">暂无服务需求</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="section-head">
+            <h2>服务评价</h2>
+          </div>
+          <form class="inline-form" @submit.prevent="evaluateRecord">
+            <select v-model="evaluateForm.record_id" @change="syncEvaluationText">
+              <option value="" disabled hidden>请选择已完成服务</option>
+              <option v-for="item in evaluableRecords" :key="item.record_id" :value="item.record_id">
+                {{ item.record_id }} / {{ item.org_name }} / {{ item.service_type || item.demand_type }} / {{ item.service_evaluation ? '已评价' : '待评价' }}
+              </option>
+            </select>
+            <input v-model="evaluateForm.service_evaluation" placeholder="填写或修改评价内容">
+            <button type="submit">保存评价</button>
+          </form>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>机构</th>
+                  <th>状态</th>
+                  <th>评价</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in elderData.records" :key="item.record_id">
+                  <td>{{ item.record_id }}</td>
+                  <td>{{ item.org_name }}</td>
+                  <td><span :class="['tag', statusClass(item.record_status)]">{{ normalizedRecordStatus(item.record_status) }}</span></td>
+                  <td>{{ item.service_evaluation || '未评价' }}</td>
+                </tr>
+                <tr v-if="!elderData.records.length">
+                  <td colspan="4" class="empty-cell">暂无服务记录</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </main>
+
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>

@@ -5,7 +5,7 @@ from flask import current_app
 
 
 def get_connection():
-    # 所有 SQL 都通过 PyMySQL 连接远程 MySQL，避免在 web 层直接操作数据库。
+    # 所有 SQL 都通过 PyMySQL 连接 MySQL，避免在 web 层直接操作数据库。
     return pymysql.connect(
         host=current_app.config["DB_HOST"],
         port=current_app.config["DB_PORT"],
@@ -15,6 +15,9 @@ def get_connection():
         charset=current_app.config["DB_CHARSET"],
         cursorclass=pymysql.cursors.DictCursor,
         autocommit=False,
+        connect_timeout=current_app.config["DB_CONNECT_TIMEOUT"],
+        read_timeout=current_app.config["DB_READ_TIMEOUT"],
+        write_timeout=current_app.config["DB_WRITE_TIMEOUT"],
     )
 
 

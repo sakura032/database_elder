@@ -1,20 +1,26 @@
 from app.db import db_cursor
 
 
-def find_account_by_username(username):
+def find_account_by_username(username, role=None):
+    # 登录时按用户名和角色查询账号，注册查重时只按用户名查询。
     sql = """
         SELECT account_id, username, password_hash, role, subject_id,
                display_name, status
         FROM user_account
         WHERE username = %s
-        LIMIT 1
     """
+    params = [username]
+    if role:
+        sql += " AND role = %s"
+        params.append(role)
+    sql += " LIMIT 1"
     with db_cursor() as cursor:
-        cursor.execute(sql, (username,))
+        cursor.execute(sql, params)
         return cursor.fetchone()
 
 
 def find_account_by_id(account_id):
+    # Flask-Login 从会话恢复用户时按账号主键查询。
     sql = """
         SELECT account_id, username, password_hash, role, subject_id,
                display_name, status
@@ -27,36 +33,42 @@ def find_account_by_id(account_id):
         return cursor.fetchone()
 
 
-def create_account(username, password_hash, role, subject_id, display_name):
+def next_elderly_id(cursor):
+    # 老人自助注册时按新库纯数字编号继续递增。
     sql = """
-        INSERT INTO user_account
-            (username, password_hash, role, subject_id, display_name, status)
-        VALUES
-            (%s, %s, %s, %s, %s, 1)
+        SELECT COALESCE(MAX(CAST(elderly_id AS UNSIGNED)), 0) + 1 AS next_no
+        FROM elderly
+        WHERE elderly_id REGEXP '^[0-9]+$'
     """
+    cursor.execute(sql)
+    return str(cursor.fetchone()["next_no"])
+
+
+def create_elder_account(username, password_hash):
+    # 公共注册只创建老人账号，并同步创建一条最小老人档案用于账号绑定。
     with db_cursor(commit=True) as cursor:
-        cursor.execute(sql, (username, password_hash, role, subject_id, display_name))
+        elderly_id = next_elderly_id(cursor)
+        cursor.execute(
+            """
+                INSERT INTO elderly (elderly_id, elderly_name)
+                VALUES (%s, %s)
+            """,
+            (elderly_id, username),
+        )
+        cursor.execute(
+            """
+                INSERT INTO user_account
+                    (username, password_hash, role, subject_id, display_name, status)
+                VALUES
+                    (%s, %s, 'elder', %s, %s, 1)
+            """,
+            (username, password_hash, elderly_id, username),
+        )
         return cursor.lastrowid
 
 
-def subject_exists(role, subject_id):
-    # subject_id 会根据角色指向不同表，因此这里用白名单控制可查询表名，避免动态 SQL 风险。
-    table_map = {
-        "admin": ("community", "community_id"),
-        "staff": ("service_staff", "staff_id"),
-        "elder": ("elderly", "elderly_id"),
-    }
-    if role not in table_map:
-        return False
-
-    table_name, id_column = table_map[role]
-    sql = f"SELECT 1 FROM {table_name} WHERE {id_column} = %s LIMIT 1"
-    with db_cursor() as cursor:
-        cursor.execute(sql, (subject_id,))
-        return cursor.fetchone() is not None
-
-
 def update_password(account_id, password_hash):
+    # 修改密码时写入新的密码哈希。
     sql = """
         UPDATE user_account
         SET password_hash = %s
